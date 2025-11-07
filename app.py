@@ -756,7 +756,7 @@ with tabs[3]:
          - Peak_Date
          - Waterfall
          - Actual_Heatmap
-         - Gainers_Decliners
+         # - Gainers_Decliners
         Preference order: use figures stored in session_state, else regenerate from data.
         """
         imgs = {}
@@ -970,7 +970,7 @@ with tabs[3]:
             pdf.cell(0, 8, sanitize_text("Forecast table not available."), ln=True)
         pdf.ln(6)
 
-        # PAGE 4: Visual insights (Trend, Peak, Gainers, Waterfall)
+        # PAGE 4: Visual insights (Trend, Peak, Waterfall)
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, sanitize_text("3) Visual Insights"), ln=True)
