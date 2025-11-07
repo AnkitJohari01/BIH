@@ -276,7 +276,7 @@ with tabs[0]:
             df = df.round(0)
             st.session_state.df_raw = df
             st.subheader("Complete dataset")
-            st.dataframe(df, height=600)
+            st.dataframe(df, height=600, use_container_width=True)
             st.success("Dataset loaded successfully!")
 
 # ---------------------------------------------------
