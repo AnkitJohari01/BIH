@@ -354,7 +354,7 @@ with tabs[1]:
             .sort_values(sales_col, ascending=False)
             .iloc[0]
         )
-        st.success(f"🏆 Top Performer: {top_store[store_col]} – {top_store[dept_col]} (₹{top_store[sales_col]:,.0f})")
+        st.success(f"🏆 Top Performer: {top_store[store_col]} – {top_store[dept_col]} ({top_store[sales_col]:,.0f})")
     else:
         st.info("Not enough variety in Store/Department to display a meaningful heatmap.")
 
@@ -382,7 +382,7 @@ with tabs[1]:
             color=sales_col,
             color_continuous_scale="YlOrRd",
         )
-        fig_top3.update_traces(texttemplate="₹%{text:,.0f}", textposition="outside")
+        fig_top3.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
         fig_top3.update_layout(template="plotly_white", height=400)
         st.plotly_chart(fig_top3, use_container_width=True)
     else:
@@ -1053,10 +1053,10 @@ def build_pdf(output_path):
 if st.button("Generate PDF Report"):
     tmpf = tempfile.mkdtemp()
     outpath = os.path.join(tmpf, "Actionable_Insights_Report.pdf")
-    # Build the images and PDF
+        # Build the images and PDF
     imgs = ensure_figures(tmpf, st.session_state.get("df_forecast"), st.session_state.get("df_raw"))
     build_pdf(outpath)
-        # Return to user
+            # Return to user
     with open(outpath, "rb") as f:
-        st.download_button("⬇️ Download Report (PDF)", f.read(), file_name="Actionable_Insights_Report.pdf", mime="application/pdf")
-# -----------------------------------------------------------------------------
+        st.download_button("⬇️Download Report (PDF)", f.read(), file_name="Actionable_Insights_Report.pdf", mime="application/pdf")
+
