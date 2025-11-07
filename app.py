@@ -688,8 +688,8 @@ with tabs[3]:
                                        textposition="top center",
                                        marker=dict(size=12, symbol="star")))
 
-    st.markdown("### Forecast Trend with Peak")
-    fig_trend.update_layout(title="Forecast Trend with Peak", template="plotly_white", height=450)
+    st.markdown("### Forecasted Sales Trend & Peak Period")
+    fig_trend.update_layout(title="Forecasted Sales Trend & Peak Period", template="plotly_white", height=450)
     st.plotly_chart(fig_trend, use_container_width=True, key="forecast_trend_chart")
 
     # ---------------------------
