@@ -1050,13 +1050,13 @@ def build_pdf(output_path):
     pdf.output(output_path)
 
 # Streamlit UI integration: make and download the PDF
-if st.button("Generate PDF Report"):
-    tmpf = tempfile.mkdtemp()
-    outpath = os.path.join(tmpf, "Actionable_Insights_Report.pdf")
-    # Build the images and PDF
-    imgs = ensure_figures(tmpf, st.session_state.get("df_forecast"), st.session_state.get("df_raw"))
-    build_pdf(outpath)
-    # Return to user
-    with open(outpath, "rb") as f:
-        st.download_button("⬇️ Download Report (PDF)", f.read(), file_name="Actionable_Insights_Report.pdf", mime="application/pdf")
+    if st.button("Generate PDF Report"):
+        tmpf = tempfile.mkdtemp()
+        outpath = os.path.join(tmpf, "Actionable_Insights_Report.pdf")
+        # Build the images and PDF
+        imgs = ensure_figures(tmpf, st.session_state.get("df_forecast"), st.session_state.get("df_raw"))
+        build_pdf(outpath)
+        # Return to user
+        with open(outpath, "rb") as f:
+            st.download_button("⬇️ Download Report (PDF)", f.read(), file_name="Actionable_Insights_Report.pdf", mime="application/pdf")
 # -----------------------------------------------------------------------------
