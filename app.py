@@ -687,6 +687,7 @@ with tabs[3]:
                                        text=[f"Peak: {peak_value:.0f}"],
                                        textposition="top center",
                                        marker=dict(size=12, symbol="star")))
+        fig_trend.update_traces(hovertemplate="Date: %{x}<br>Sales: %{y:.0f}<extra></extra>")
 
     st.markdown("### Forecasted Sales Trend & Peak Period")
     fig_trend.update_layout(title="Forecasted Sales Trend & Peak Period", template="plotly_white", height=450)
