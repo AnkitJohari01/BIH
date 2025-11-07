@@ -488,24 +488,24 @@ with tabs[2]:
                 ))
                 st.plotly_chart(fig, use_container_width=True)
 
-                # ✅ Prophet Components (trend, weekly, yearly, etc.)
-                st.subheader("🔍 Prophet Components")
-                try:
-                    future = model_obj.make_future_dataframe(periods=periods, freq=freq)
-                    full_forecast = model_obj.predict(future)
+                # # ✅ Prophet Components (trend, weekly, yearly, etc.)
+                # st.subheader("🔍 Prophet Components")
+                # try:
+                #     future = model_obj.make_future_dataframe(periods=periods, freq=freq)
+                #     full_forecast = model_obj.predict(future)
                     
-                    comp_fig = model_obj.plot_components(full_forecast)
-                    st.pyplot(comp_fig)
-                except Exception as e:
-                    st.warning(f"Could not plot Prophet components: {e}")
+                #     comp_fig = model_obj.plot_components(full_forecast)
+                #     st.pyplot(comp_fig)
+                # except Exception as e:
+                #     st.warning(f"Could not plot Prophet components: {e}")
 
-                # ✅ Compute growth and insights
-                Historical_Average = df_resampled["y"].mean()
-                Forecast_Average = tail_periods["Forecast"].mean()
-                growth_pct = (
-                    (Forecast_Average - Historical_Average) / Historical_Average * 100
-                    if Historical_Average else 0
-                )
+                # # ✅ Compute growth and insights
+                # Historical_Average = df_resampled["y"].mean()
+                # Forecast_Average = tail_periods["Forecast"].mean()
+                # growth_pct = (
+                #     (Forecast_Average - Historical_Average) / Historical_Average * 100
+                #     if Historical_Average else 0
+                # )
                 
                 
                 st.subheader("⚠️ Alerts & Recommendations")
