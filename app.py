@@ -325,6 +325,7 @@ with tabs[1]:
         .fillna(0)
     )
     pivot_df = pivot_df.round(0).astype(int)
+    pivot_df = pivot_df.applymap(lambda x: int(x))
 
     if pivot_df.shape[0] > 1 and pivot_df.shape[1] > 1:
         fig_heatmap = px.imshow(
