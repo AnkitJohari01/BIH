@@ -979,8 +979,8 @@ with tabs[3]:
         captions = {
             "Forecast_Trend": "Forecast trend with rolling average and peak marker.",
             "Peak_Date": "Peak demand date highlighted for prioritized action.",
-            "Gainers_Decliners": "Period-over-period Waterfall showing momentum.",
-            "Waterfall": "Variance between forecast and target highlighting gap."
+            "Gainers_Decliners": "Period-over-period Comparison Chart showing momentum.",
+            "Comparision": "Variance between forecast and target highlighting gap."
         }
         for name in chart_order:
             if name in imgs:
