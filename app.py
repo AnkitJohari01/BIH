@@ -558,39 +558,38 @@ with tabs[3]:
     import numpy as np
     import tempfile
     import os
+    import re
+    import time
     from fpdf import FPDF
     from datetime import datetime
     import plotly.io as pio
-    import matplotlib.pyplot as plt
-    import re
-    import time
 
-    # ---------------------------------------------------
-    # 💡 Header
-    # ---------------------------------------------------
-    st.markdown("## 💡 Actionable Insights Dashboard")
+    # ---------------------------
+    # Header
+    # ---------------------------
+    st.markdown("## Actionable Insights Dashboard")
 
-    # ---------------------------------------------------
-    # 1️⃣ Access Data
-    # ---------------------------------------------------
+    # ---------------------------
+    # Access stored data
+    # ---------------------------
     if (
         "df_forecast" not in st.session_state
         or st.session_state["df_forecast"] is None
         or st.session_state["df_forecast"].empty
     ):
-        st.warning("⚠️ Please generate a forecast first in the '📈 Forecast' tab.")
+        st.warning("Please generate a forecast first in the Forecast tab.")
         st.stop()
 
     df_forecast = st.session_state["df_forecast"].copy()
     df_raw = st.session_state.get("df_raw", None)
 
-    store = st.session_state.get("store", "Unknown Store")
-    dept = st.session_state.get("dept", "Unknown Department")
+    store = st.session_state.get("store", "All Stores")
+    dept = st.session_state.get("dept", "All Departments")
     gen_date = st.session_state.get("gen_date", str(datetime.today().date()))
 
-    # ---------------------------------------------------
-    # 2️⃣ Normalize Columns
-    # ---------------------------------------------------
+    # ---------------------------
+    # Normalize columns (keeps original logic)
+    # ---------------------------
     df = df_forecast.copy()
     df.columns = df.columns.str.strip()
     rename_map = {}
@@ -620,9 +619,9 @@ with tabs[3]:
     if "Target" not in df.columns:
         df["Target"] = df["Forecast"].mean() * 0.95
 
-    # ---------------------------------------------------
-    # 3️⃣ Frequency Setup
-    # ---------------------------------------------------
+    # ---------------------------
+    # Frequency selection (keeps behavior)
+    # ---------------------------
     freq = st.selectbox("Select Frequency for Analysis", ["Daily", "Weekly", "Monthly"], index=0)
     rolling_window = 7 if freq == "Daily" else 4 if freq == "Weekly" else 2
     st.caption(f"Rolling average window automatically set to {rolling_window} periods.")
@@ -639,9 +638,9 @@ with tabs[3]:
         resampled = df.groupby("_month_start", as_index=False)["Forecast"].sum()
         resampled["Date_ref"] = resampled["_month_start"]
 
-    # ---------------------------------------------------
-    # 4️⃣ KPIs
-    # ---------------------------------------------------
+    # ---------------------------
+    # KPIs (keeps your formulas)
+    # ---------------------------
     Historical_Average = resampled["Forecast"].mean() * 0.9 if not resampled.empty else 0
     Forecast_Average = resampled["Forecast"].mean() if not resampled.empty else 0
     growth_pct = ((Forecast_Average - Historical_Average) / Historical_Average * 100) if Historical_Average else 0
@@ -659,52 +658,55 @@ with tabs[3]:
     c2.metric("Forecast Average", f"{Forecast_Average:.0f}")
     c3.metric("High-Performing Periods", f"{high_perf_count}")
 
+    # present high performing periods (rounded / sanitized)
+    hp_list = high_perf["Date_ref"].dt.strftime("%Y-%m-%d").tolist() if not high_perf.empty else []
     st.markdown(
         f'<div style="background-color:#0078D7;color:white;padding:10px;border-radius:8px;margin-top:5px;">'
-        f'<b>High-performing periods:</b> {", ".join(high_perf["Date_ref"].dt.strftime("%Y-%m-%d").tolist())}'
+        f'<b>High-performing periods:</b> {", ".join(hp_list) if hp_list else "None detected"}'
         f'</div>',
         unsafe_allow_html=True
     )
 
-    # ---------------------------------------------------
-    # 5️⃣ Executive Summary
-    # ---------------------------------------------------
+    # ---------------------------
+    # Executive Summary
+    # ---------------------------
     st.markdown("### Executive Summary")
     st.markdown(f"""
-    - **Store:** {store}  
-    - **Department:** {dept}  
-    - **Report Date:** {gen_date}  
-    - **Frequency:** {freq}  
-    - **Trend:** Expected **{trend_dir} of {abs(growth_pct):.1f}%**  
-    - **Historical Average:** {Historical_Average:.0f}  
-    - **Forecast Average:** {Forecast_Average:.0f}
+- **Store:** {store}  
+- **Department:** {dept}  
+- **Report Date:** {gen_date}  
+- **Frequency:** {freq}  
+- **Trend:** Expected **{trend_dir} of {abs(growth_pct):.1f}%**  
+- **Historical Average:** {Historical_Average:.0f}  
+- **Forecast Average:** {Forecast_Average:.0f}
     """)
 
-    # ---------------------------------------------------
-    # 6️⃣ Forecast Trend + Peak Marker
-    # ---------------------------------------------------
+    # ---------------------------
+    # Forecast Trend + Peak marker (keeps look & behavior)
+    # ---------------------------
     resampled["RollingAverage"] = resampled["Forecast"].rolling(rolling_window, min_periods=1).mean()
-    peak_date = resampled.loc[resampled["Forecast"].idxmax(), "Date_ref"]
-    peak_value = resampled["Forecast"].max()
+    peak_date = resampled.loc[resampled["Forecast"].idxmax(), "Date_ref"] if not resampled.empty else None
+    peak_value = resampled["Forecast"].max() if not resampled.empty else 0
 
     fig_trend = go.Figure()
     fig_trend.add_trace(go.Scatter(x=resampled["Date_ref"], y=resampled["Forecast"],
-                                   mode="lines+markers", name="Forecast", line=dict(color="#005B96")))
+                                   mode="lines+markers", name="Forecast"))
     fig_trend.add_trace(go.Scatter(x=resampled["Date_ref"], y=resampled["RollingAverage"],
-                                   mode="lines", name="Rolling Avg", line=dict(color="#FFC107", dash="dash")))
-    fig_trend.add_trace(go.Scatter(x=[peak_date], y=[peak_value],
-                                   mode="markers+text", name="Peak",
-                                   text=[f"Peak: {peak_value:.0f}"],
-                                   textposition="top center",
-                                   marker=dict(size=12, color="crimson", symbol="star")))
+                                   mode="lines", name="Rolling Avg", line=dict(dash="dash")))
+    if peak_date is not None:
+        fig_trend.add_trace(go.Scatter(x=[peak_date], y=[peak_value],
+                                       mode="markers+text", name="Peak",
+                                       text=[f"Peak: {peak_value:.0f}"],
+                                       textposition="top center",
+                                       marker=dict(size=12, symbol="star")))
 
     st.markdown("### Forecast Trend with Peak")
     fig_trend.update_layout(title="Forecast Trend with Peak", template="plotly_white", height=450)
-    st.plotly_chart(fig_trend, use_container_width=True)
+    st.plotly_chart(fig_trend, use_container_width=True, key="forecast_trend_chart")
 
-    # ---------------------------------------------------
-    # 7️⃣ Forecast vs Target (Waterfall)
-    # ---------------------------------------------------
+    # ---------------------------
+    # Forecast vs Target (waterfall)
+    # ---------------------------
     st.markdown("### Forecast vs Target Breakdown")
     if "Target" not in df.columns or df["Target"].isnull().all():
         target_input = st.number_input(
@@ -724,82 +726,324 @@ with tabs[3]:
         y=[total_target, variance, total_forecast],
         text=[f"{total_target:,.0f}", f"{variance:+,.0f}", f"{total_forecast:,.0f}"],
         textposition="outside",
-        connector={"line": {"color": "gray", "width": 1}},
-        increasing={"marker": {"color": "#2ECC71"}},
-        decreasing={"marker": {"color": "#E74C3C"}},
-        totals={"marker": {"color": "#3498DB"}}
+        connector={"line": {"color": "gray", "width": 1}}
     ))
-
-    fig_waterfall.update_layout(
-        title="Forecast vs Target Performance Overview",
-        template="plotly_white",
-        height=500,
-        yaxis_title="Sales Value"
-    )
-
-    st.plotly_chart(fig_waterfall, use_container_width=True)
+    fig_waterfall.update_layout(title="Forecast vs Target Performance Overview", template="plotly_white", height=500, yaxis_title="Sales Value")
+    st.plotly_chart(fig_waterfall, use_container_width=True, key="forecast_vs_target_chart")
 
     if variance > 0:
-        st.success(f"🎯 Forecast is **above** target by {variance:,.0f} units.")
+        st.success(f"Forecast is above target by {variance:,.0f} units.")
     elif variance < 0:
-        st.error(f"⚠️ Forecast is **below** target by {abs(variance):,.0f} units.")
+        st.error(f"Forecast is below target by {abs(variance):,.0f} units.")
     else:
-        st.info("✅ Forecast exactly matches the target. Great balance!")
+        st.info("Forecast exactly matches the target.")
 
-    # ---------------------------------------------------
-    # 8️⃣ PDF Export Section (Inside tab[3])
-    # ---------------------------------------------------
+    # ---------------------------
+    # PDF export: helpers (now comprehensive)
+    # ---------------------------
     def sanitize_text(text: str) -> str:
+        # remove emojis / fancy unicode that FPDF with latin-1 may choke on
+        if text is None:
+            return ""
         return re.sub(r"[^\x00-\x7F]+", "", str(text))
 
     def save_plotly_png(fig, path, scale=2):
         try:
+            # try to use the kaleido engine
             pio.write_image(fig, path, format="png", engine="kaleido", scale=scale)
+            # small wait loop until file exists
             for _ in range(10):
                 if os.path.exists(path) and os.path.getsize(path) > 0:
                     return True
-                time.sleep(0.15)
+                time.sleep(0.1)
         except Exception as e:
             st.warning(f"Could not save plotly image {path}: {e}")
         return False
 
-    def ensure_figures(tmpdir, df_forecast, df_raw):
+    def ensure_figures(tmpdir, df_forecast_local, df_raw_local, figs_from_state=True):
+        """
+        Return dict of saved image paths for the PDF:
+         - Forecast_Trend
+         - Peak_Date
+         - Waterfall
+         - Actual_Heatmap
+         - Gainers_Decliners
+        Preference order: use figures stored in session_state, else regenerate from data.
+        """
         imgs = {}
-        if df_forecast is not None and not df_forecast.empty:
-            fig = px.line(df_forecast, x=df_forecast.columns[0], y=df_forecast.columns[1], title="Forecast Trend")
+
+        # 1) Forecast Trend (prefer session_state fig_trend)
+        fig = st.session_state.get("fig_trend") if figs_from_state else None
+        if fig is None and df_forecast_local is not None and not df_forecast_local.empty:
+            try:
+                dcol = df_forecast_local.columns[0]; fcol = df_forecast_local.columns[1]
+                tmp = df_forecast_local.copy()
+                tmp[dcol] = pd.to_datetime(tmp[dcol])
+                fig = px.line(tmp, x=dcol, y=fcol, title="Forecast Trend")
+                # add rolling avg if possible
+                tmp["rolling"] = tmp[fcol].rolling(window=max(1, min(7, len(tmp)//4)), min_periods=1).mean()
+                fig.add_scatter(x=tmp[dcol], y=tmp["rolling"], mode="lines", name="Rolling Avg")
+            except Exception:
+                fig = None
+        if fig is not None:
             p = os.path.join(tmpdir, "forecast_trend.png")
             if save_plotly_png(fig, p):
                 imgs["Forecast_Trend"] = p
+
+        # 2) Peak Date (prefer session_state fig_peak)
+        figp = st.session_state.get("fig_peak") if figs_from_state else None
+        if figp is None and df_forecast_local is not None and not df_forecast_local.empty:
+            try:
+                dcol = df_forecast_local.columns[0]; fcol = df_forecast_local.columns[1]
+                tmp = df_forecast_local.copy()
+                tmp[dcol] = pd.to_datetime(tmp[dcol])
+                peak_row = tmp.loc[tmp[fcol].idxmax()]
+                figp = px.line(tmp, x=dcol, y=fcol, title="Peak Forecast Date")
+                figp.add_scatter(x=[peak_row[dcol]], y=[peak_row[fcol]], mode="markers+text",
+                                 text=[f"Peak: {peak_row[fcol]:.0f}"], textposition="top center")
+            except Exception:
+                figp = None
+        if figp is not None:
+            p = os.path.join(tmpdir, "peak_date.png")
+            if save_plotly_png(figp, p):
+                imgs["Peak_Date"] = p
+
+        # 3) Waterfall (prefer session_state fig_waterfall)
+        figw = st.session_state.get("fig_waterfall") if figs_from_state else None
+        if figw is None and df_forecast_local is not None and not df_forecast_local.empty:
+            try:
+                f_total = df_forecast_local.iloc[:, 1].sum()
+                tgt = (st.session_state.get("target_total") or (f_total * 0.95))
+                wf = px.bar(x=["Target", "Forecast"], y=[tgt, f_total], title="Forecast vs Target")
+                figw = wf
+            except Exception:
+                figw = None
+        if figw is not None:
+            p = os.path.join(tmpdir, "waterfall.png")
+            if save_plotly_png(figw, p):
+                imgs["Waterfall"] = p
+
+        # 4) Actuals heatmap (prefer session_state fig_heatmap)
+        figh = st.session_state.get("fig_heatmap") if figs_from_state else None
+        if figh is None and df_raw_local is not None and not df_raw_local.empty:
+            try:
+                raw = df_raw_local.copy()
+                date_col = next((c for c in raw.columns if "date" in c.lower()), None)
+                store_col = next((c for c in raw.columns if "store" in c.lower() or "location" in c.lower()), None)
+                dept_col = next((c for c in raw.columns if "dept" in c.lower() or "category" in c.lower()), None)
+                sales_col = next((c for c in raw.columns if "sale" in c.lower() or "amount" in c.lower() or "revenue" in c.lower()), None)
+                if store_col and dept_col and sales_col:
+                    pivot = raw.groupby([dept_col, store_col])[sales_col].sum().unstack(fill_value=0)
+                    # ensure square-ish cells by keeping aspect="equal" if possible
+                    figh = px.imshow(pivot, text_auto=True, aspect="auto", origin="lower", title="Actuals: Department × Store Sales")
+                else:
+                    if date_col and sales_col:
+                        s = raw.groupby(date_col)[sales_col].sum().reset_index()
+                        figh = px.line(s, x=date_col, y=sales_col, title="Actuals Over Time")
+                    else:
+                        figh = None
+            except Exception:
+                figh = None
+        if figh is not None:
+            p = os.path.join(tmpdir, "heatmap.png")
+            if save_plotly_png(figh, p):
+                imgs["Actual_Heatmap"] = p
+
+        # 5) Gainers/Decliners (simple recent vs previous period)
+        try:
+            gname = "Gainers_Decliners"
+            df_temp = resampled.copy() if not resampled.empty else None
+            if df_temp is not None and len(df_temp) >= 2:
+                df_temp = df_temp.sort_values("Date_ref")
+                last = df_temp.iloc[-1]["Forecast"]
+                prev = df_temp.iloc[-2]["Forecast"]
+                diff = last - prev
+                # build a tiny bar chart
+                gfig = px.bar(x=["Previous", "Last"], y=[prev, last], title="Previous vs Last Period")
+                p = os.path.join(tmpdir, "gainers_decliners.png")
+                if save_plotly_png(gfig, p):
+                    imgs[gname] = p
+        except Exception:
+            pass
+
         return imgs
 
+    # ---------------------------
+    # build PDF (comprehensive, includes requested changes)
+    # ---------------------------
     def build_pdf(output_path):
-        df_forecast = st.session_state.get("df_forecast")
-        df_raw = st.session_state.get("df_raw")
-        store = st.session_state.get("store", "All Stores")
-        dept = st.session_state.get("dept", "All Departments")
-        gen_date = st.session_state.get("gen_date", str(pd.Timestamp.now().date()))
+        df_forecast_local = st.session_state.get("df_forecast")
+        df_raw_local = st.session_state.get("df_raw")
+        store_local = st.session_state.get("store", "All Stores")
+        dept_local = st.session_state.get("dept", "All Departments")
+        gen_date_local = st.session_state.get("gen_date", str(pd.Timestamp.now().date()))
+        # compute high-performing periods (same logic)
+        high_perf_list_local = []
+        if df_forecast_local is not None and not df_forecast_local.empty:
+            try:
+                dcol = df_forecast_local.columns[0]; fcol = df_forecast_local.columns[1]
+                tmp = df_forecast_local.copy()
+                tmp[dcol] = pd.to_datetime(tmp[dcol])
+                hist_avg = tmp[fcol].mean() * 0.9
+                high_perf_list_local = tmp[tmp[fcol] > hist_avg * 1.2][dcol].dt.strftime("%Y-%m-%d").tolist()
+            except Exception:
+                high_perf_list_local = []
+
         tmpdir = tempfile.mkdtemp()
-        imgs = ensure_figures(tmpdir, df_forecast, df_raw)
+        imgs = ensure_figures(tmpdir, df_forecast_local, df_raw_local, figs_from_state=True)
+
         pdf = FPDF()
+        pdf.set_auto_page_break(auto=True, margin=12)
+
+        # PAGE 1: Cover
         pdf.add_page()
-        pdf.set_font("Arial", "B", 16)
-        pdf.cell(0, 10, sanitize_text("Actionable Insights Report"), ln=True, align="C")
-        pdf.ln(10)
-        pdf.set_font("Arial", "", 12)
-        pdf.multi_cell(0, 6, sanitize_text(f"Store: {store}\nDepartment: {dept}\nGenerated: {gen_date}"))
+        pdf.set_font("Arial", "B", 18)
+        pdf.set_text_color(0, 51, 102)
+        pdf.cell(0, 12, sanitize_text("ClearHealth — Actionable Insights Report"), ln=True, align="C")
         pdf.ln(6)
-        if "Forecast_Trend" in imgs:
-            pdf.image(imgs["Forecast_Trend"], x=15, w=180)
+
+        pdf.set_font("Arial", "", 11)
+        pdf.set_text_color(0, 0, 0)
+        metadata = (
+            f"Generated: {gen_date_local}\n"
+            f"Store: {store_local}\n"
+            f"Department: {dept_local}\n"
+        )
+        pdf.multi_cell(0, 6, sanitize_text(metadata))
+        pdf.ln(4)
+
+        # Executive summary block
+        pdf.set_font("Arial", "B", 13)
+        pdf.set_text_color(0, 51, 102)
+        pdf.cell(0, 8, sanitize_text("Executive Summary"), ln=True)
+        pdf.ln(1)
+        pdf.set_font("Arial", "", 11)
+        exec_text = (
+            "This report shows actual performance, forecast results, and recommended focus areas.\n"
+            "Sections include: Actuals heatmap, Forecast results table, Visual insights, and analysis notes."
+        )
+        pdf.multi_cell(0, 6, sanitize_text(exec_text))
+        pdf.ln(4)
+
+        pdf.set_font("Arial", "B", 11)
+        pdf.cell(0, 8, sanitize_text("High-Performing Periods:"), ln=True)
+        pdf.set_font("Arial", "", 11)
+        pdf.multi_cell(0, 6, sanitize_text(", ".join(high_perf_list_local) if high_perf_list_local else "None detected"))
+        pdf.ln(6)
+
+        # PAGE 2: Actuals heatmap
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, sanitize_text("1) Actual Insights (Heatmap)"), ln=True)
+        pdf.ln(2)
+        if "Actual_Heatmap" in imgs:
+            pdf.image(imgs["Actual_Heatmap"], x=15, w=180)
+            pdf.ln(4)
+            pdf.set_font("Arial", "I", 10)
+            pdf.multi_cell(0, 6, sanitize_text("Actuals heatmap — darker cell = higher sales."))
+        else:
+            pdf.set_font("Arial", "I", 10)
+            pdf.cell(0, 8, sanitize_text("Actuals heatmap not available."), ln=True)
+        pdf.ln(6)
+
+        # PAGE 3: Forecast table (sample)
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, sanitize_text("2) Forecasted Results (Sample)"), ln=True)
+        pdf.set_font("Arial", "", 11)
+        pdf.ln(2)
+        if df_forecast_local is not None and not df_forecast_local.empty:
+            df_tbl = df_forecast_local.copy().head(20)
+            cols = [str(c) for c in df_tbl.columns]
+            col_count = len(cols)
+            # width space and column width
+            table_w = pdf.w - 20
+            col_w = max(20, table_w / col_count)
+            pdf.set_font("Arial", "B", 9)
+            pdf.set_fill_color(0, 51, 102)
+            pdf.set_text_color(255, 255, 255)
+            for c in cols:
+                pdf.cell(col_w, 7, sanitize_text(c[:15]), border=1, align="C", fill=True)
+            pdf.ln()
+            pdf.set_font("Arial", "", 8)
+            pdf.set_text_color(0, 0, 0)
+            for _, row in df_tbl.iterrows():
+                for val in row:
+                    # round numeric values, sanitize text
+                    if isinstance(val, (int, float, np.integer, np.floating)):
+                        cell_text = f"{int(round(val))}"
+                    else:
+                        cell_text = sanitize_text(str(val)[:15])
+                    pdf.cell(col_w, 6, cell_text, border=1, align="C")
+                pdf.ln()
+        else:
+            pdf.set_font("Arial", "I", 10)
+            pdf.cell(0, 8, sanitize_text("Forecast table not available."), ln=True)
+        pdf.ln(6)
+
+        # PAGE 4: Visual insights (Trend, Peak, Gainers, Waterfall)
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, sanitize_text("3) Visual Insights"), ln=True)
+        pdf.ln(2)
+        chart_order = ["Forecast_Trend", "Peak_Date", "Gainers_Decliners", "Waterfall"]
+        captions = {
+            "Forecast_Trend": "Forecast trend with rolling average and peak marker.",
+            "Peak_Date": "Peak demand date highlighted for prioritized action.",
+            "Gainers_Decliners": "Period-over-period comparison showing momentum.",
+            "Waterfall": "Variance between forecast and target highlighting gap."
+        }
+        for name in chart_order:
+            if name in imgs:
+                pdf.set_font("Arial", "B", 12)
+                pdf.cell(0, 8, sanitize_text(name.replace("_", " ")), ln=True)
+                pdf.image(imgs[name], x=15, w=180)
+                pdf.ln(4)
+                pdf.set_font("Arial", "", 10)
+                pdf.multi_cell(0, 6, sanitize_text(captions.get(name, "")))
+                pdf.ln(4)
+            else:
+                pdf.set_font("Arial", "I", 10)
+                pdf.cell(0, 7, sanitize_text(f"Chart not available: {name}"), ln=True)
+                pdf.ln(4)
+
+        # PAGE last: KPIs & Notes
+        pdf.add_page()
+        pdf.set_font("Arial", "B", 14)
+        pdf.cell(0, 10, sanitize_text("4) Actionable Insights & Notes"), ln=True)
+        pdf.set_font("Arial", "", 11)
+        pdf.ln(2)
+        # include some computed KPIs
+        kpi_text = (
+            f"Historical Average: {int(round(Historical_Average))} | "
+            f"Forecast Average: {int(round(Forecast_Average))} | "
+            f"High-performing periods: {', '.join(high_perf_list_local) if high_perf_list_local else 'None'}"
+        )
+        pdf.multi_cell(0, 6, sanitize_text(kpi_text))
+        pdf.ln(6)
+        summary_text = st.session_state.get("actionable_summary") or ""
+        if summary_text:
+            pdf.multi_cell(0, 6, sanitize_text(summary_text))
+        pdf.ln(6)
+        pdf.set_font("Arial", "I", 9)
+        pdf.set_text_color(120, 120, 120)
+        pdf.multi_cell(0, 6, sanitize_text("Generated by ClearHealth."))
+
+        # Save
         pdf.output(output_path)
 
+    # ---------------------------
+    # Streamlit UI integration (inside tab[3])
+    # ---------------------------
     if st.button("Generate PDF Report"):
         tmpf = tempfile.mkdtemp()
         outpath = os.path.join(tmpf, "Actionable_Insights_Report.pdf")
+        # Build images and PDF
         imgs = ensure_figures(tmpf, st.session_state.get("df_forecast"), st.session_state.get("df_raw"))
         build_pdf(outpath)
         with open(outpath, "rb") as f:
             st.download_button(
-                "⬇️ Download Report (PDF)",
+                "Download Report (PDF)",
                 f.read(),
                 file_name="Actionable_Insights_Report.pdf",
                 mime="application/pdf"
