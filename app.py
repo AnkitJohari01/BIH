@@ -323,8 +323,8 @@ with tabs[1]:
         .sum()
         .pivot(index=store_col, columns=dept_col, values=sales_col)
         .fillna(0)
-        .round(0)
     )
+    pivot_df = pivot_df.round(0).astype(int)
 
     if pivot_df.shape[0] > 1 and pivot_df.shape[1] > 1:
         fig_heatmap = px.imshow(
