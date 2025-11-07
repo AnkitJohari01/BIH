@@ -1045,6 +1045,6 @@ with tabs[3]:
             st.download_button(
                 "Download Report (PDF)",
                 f.read(),
-                file_name="Actionable_Insights_Report.pdf",
+                file_name=f"actionable_insight_{dept}_{store}_{gen_date}.pdf",
                 mime="application/pdf"
             )
