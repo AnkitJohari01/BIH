@@ -334,7 +334,6 @@ with tabs[1]:
             labels=dict(x="Department", y="Store", color="Sales"),
             aspect="actual",
         )
-        fig_heatmap.update_traces(hovertemplate="Sales: %{z}<extra></extra>")
         fig_heatmap.update_layout(
             title="Store × Department Sales Heatmap",
             xaxis_title="Department",
