@@ -264,7 +264,7 @@ def run_prophet_forecast(df_resampled, periods, freq, seasonality_weekly=True, s
 
 
 # ---------------- UI ----------------
-tabs = st.tabs(["📂 Upload Data", "📊 Actual Data Insights", "📈 Forecast", "💬 Actionable Insights", ])
+tabs = st.tabs(["📂 Upload Data", "📊 Store & Department Performance Overview", "📈 Forecast", "💬 Actionable Insights", ])
 
 # ---------------------------------------------------
 # 📂 Tab 0: Upload Data
@@ -291,7 +291,7 @@ with tabs[1]:
     import plotly.express as px
     import pandas as pd
     import streamlit as st
-    st.markdown("## 📊 Actual Data Insights")
+    st.markdown("## 📊 Store & Department Performance Overview")
     st.caption("Visualize key patterns in your uploaded dataset before forecasting.")
 
     # 1️⃣ Check if data is uploaded
