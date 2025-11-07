@@ -429,7 +429,7 @@ with tabs[2]:
                 filtered = filtered[filtered[dept_col].astype(str) == selected_dept]
 
             st.subheader("Filtered Data")
-            st.dataframe(filtered, height=350)
+            st.dataframe(filtered, height=350, use_container_width=True)
 
             prepared = prepare_data_for_prophet(filtered, date_col, target_col)
             if prepared.empty:
@@ -473,7 +473,7 @@ with tabs[2]:
                 tail_periods["Forecast"] = tail_periods["Forecast"].round(0)
 
                 st.subheader("Forecasted Results")
-                st.dataframe(tail_periods)
+                st.dataframe(tail_periods, use_container_width=True)
 
                 # ✅ Compute model metrics
                 metrics = compute_metrics_by_merge(
