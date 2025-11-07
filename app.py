@@ -756,7 +756,6 @@ with tabs[3]:
          - Peak_Date
          - Waterfall
          - Actual_Heatmap
-         # - Gainers_Decliners
         Preference order: use figures stored in session_state, else regenerate from data.
         """
         imgs = {}
@@ -837,25 +836,6 @@ with tabs[3]:
             p = os.path.join(tmpdir, "heatmap.png")
             if save_plotly_png(figh, p):
                 imgs["Actual_Heatmap"] = p
-
-        # 5) Gainers/Decliners (simple recent vs previous period)
-        try:
-            gname = "Gainers_Decliners"
-            df_temp = resampled.copy() if not resampled.empty else None
-            if df_temp is not None and len(df_temp) >= 2:
-                df_temp = df_temp.sort_values("Date_ref")
-                last = df_temp.iloc[-1]["Forecast"]
-                prev = df_temp.iloc[-2]["Forecast"]
-                diff = last - prev
-                # build a tiny bar chart
-                gfig = px.bar(x=["Previous", "Last"], y=[prev, last], title="Previous vs Last Period")
-                p = os.path.join(tmpdir, "gainers_decliners.png")
-                if save_plotly_png(gfig, p):
-                    imgs[gname] = p
-        except Exception:
-            pass
-
-        return imgs
 
     # ---------------------------
     # build PDF (comprehensive, includes requested changes)
@@ -975,7 +955,7 @@ with tabs[3]:
         pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, sanitize_text("3) Visual Insights"), ln=True)
         pdf.ln(2)
-        chart_order = ["Forecast_Trend", "Peak_Date", "Gainers_Decliners", "Waterfall"]
+        chart_order = ["Forecast_Trend", "Peak_Date", "Waterfall"]
         captions = {
             "Forecast_Trend": "Forecast trend with rolling average and peak marker.",
             "Peak_Date": "Peak demand date highlighted for prioritized action.",
