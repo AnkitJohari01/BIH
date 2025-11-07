@@ -693,39 +693,7 @@ with tabs[3]:
     fig_trend.update_layout(title="Forecasted Sales Trend & Peak Period", template="plotly_white", height=450)
     st.plotly_chart(fig_trend, use_container_width=True, key="forecast_trend_chart")
 
-    # ---------------------------
-    # Forecast vs Target
-    # ---------------------------
-    st.markdown("### Forecast vs Target Performance")
-    if "Target" not in df.columns or df["Target"].isnull().all():
-        target_input = st.number_input(
-            "Enter Total Target Sales", value=float(Forecast_Average * len(df)), step=100.0
-        )
-        df["Target"] = target_input / len(df)
 
-    total_forecast = df["Forecast"].sum()
-    total_target = df["Target"].sum()
-    variance = total_forecast - total_target
-
-    fig_comparison = go.Figure(go.Waterfall(
-        name="Variance",
-        orientation="v",
-        measure=["absolute", "relative", "total"],
-        x=["Target", "Variance", "Forecast"],
-        y=[total_target, variance, total_forecast],
-        text=[f"{total_target:,.0f}", f"{variance:+,.0f}", f"{total_forecast:,.0f}"],
-        textposition="outside",
-        connector={"line": {"color": "gray", "width": 1}}
-    ))
-    fig_comparison.update_layout(title="Forecast vs Target Performance Overview", template="plotly_white", height=500, yaxis_title="Sales Value")
-    st.plotly_chart(fig_comparison, use_container_width=True, key="forecast_vs_target_chart")
-
-    if variance > 0:
-        st.success(f"Forecast is above target by {variance:,.0f} units.")
-    elif variance < 0:
-        st.error(f"Forecast is below target by {abs(variance):,.0f} units.")
-    else:
-        st.info("Forecast exactly matches the target.")
 
     # ---------------------------
     # PDF export: helpers (now comprehensive)
