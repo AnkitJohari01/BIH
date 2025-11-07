@@ -57,15 +57,11 @@ st.set_page_config(page_title="📦 Business Insight Hub", layout="wide")
 st.title("📦 Business Insight Hub Dashboard")
 st.markdown('Upload your business data, analyze trends, and generate accurate sales forecasts for data-driven decisions.</div>', unsafe_allow_html=True)
 
-
-# ---------------- CSS ----------------
+# ========= Simple UI==============
 st.markdown("""
 <style>
 .one-liner { font-size:13px; color:#555; margin-bottom:8px; }
 .small-muted { font-size:12px; color:#6c6c6c; }
-.stTabs [role="tablist"] > div { background: #f6f7fb; border-radius: 12px; padding: 6px; }
-.stTabs [role="tab"] { border-radius: 999px; padding: 6px 14px; margin: 4px; }
-.stTabs [role="tab"][aria-selected="true"] { transform: translateY(-3px); box-shadow: 0 6px 18px rgba(22,40,80,0.08); background: #fff; }
 </style>
 """, unsafe_allow_html=True)
 
