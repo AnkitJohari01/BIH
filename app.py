@@ -329,7 +329,7 @@ with tabs[1]:
     if pivot_df.shape[0] > 1 and pivot_df.shape[1] > 1:
         fig_heatmap = px.imshow(
             pivot_df,
-            text_auto=.0f,
+            text_auto=".0f",
             color_continuous_scale="YlOrRd",
             labels=dict(x="Department", y="Store", color="Sales"),
             aspect="actual",
