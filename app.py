@@ -706,7 +706,7 @@ with tabs[3]:
     total_target = df["Target"].sum()
     variance = total_forecast - total_target
 
-    fig_comparison = go.Figure(go.comparison(
+    fig_comparison = go.Figure(go.Waterfall(
         name="Variance",
         orientation="v",
         measure=["absolute", "relative", "total"],
@@ -753,7 +753,7 @@ with tabs[3]:
         Return dict of saved image paths for the PDF:
          - Forecast_Trend
          - Peak_Date
-         - comparison
+         - Waterfall
          - Actual_Heatmap
          - Gainers_Decliners
         Preference order: use figures stored in session_state, else regenerate from data.
@@ -796,7 +796,7 @@ with tabs[3]:
             if save_plotly_png(figp, p):
                 imgs["Peak_Date"] = p
 
-        # 3) comparison (prefer session_state fig_comparison)
+        # 3) Waterfall (prefer session_state fig_comparison)
         figw = st.session_state.get("fig_comparison") if figs_from_state else None
         if figw is None and df_forecast_local is not None and not df_forecast_local.empty:
             try:
@@ -807,9 +807,9 @@ with tabs[3]:
             except Exception:
                 figw = None
         if figw is not None:
-            p = os.path.join(tmpdir, "comparison.png")
+            p = os.path.join(tmpdir, "Waterfall.png")
             if save_plotly_png(figw, p):
-                imgs["comparison"] = p
+                imgs["Waterfall"] = p
 
         # 4) Actuals heatmap (prefer session_state fig_heatmap)
         figh = st.session_state.get("fig_heatmap") if figs_from_state else None
@@ -969,17 +969,17 @@ with tabs[3]:
             pdf.cell(0, 8, sanitize_text("Forecast table not available."), ln=True)
         pdf.ln(6)
 
-        # PAGE 4: Visual insights (Trend, Peak, Gainers, comparison)
+        # PAGE 4: Visual insights (Trend, Peak, Gainers, Waterfall)
         pdf.add_page()
         pdf.set_font("Arial", "B", 14)
         pdf.cell(0, 10, sanitize_text("3) Visual Insights"), ln=True)
         pdf.ln(2)
-        chart_order = ["Forecast_Trend", "Peak_Date", "Gainers_Decliners", "comparison"]
+        chart_order = ["Forecast_Trend", "Peak_Date", "Gainers_Decliners", "Waterfall"]
         captions = {
             "Forecast_Trend": "Forecast trend with rolling average and peak marker.",
             "Peak_Date": "Peak demand date highlighted for prioritized action.",
-            "Gainers_Decliners": "Period-over-period comparison showing momentum.",
-            "comparison": "Variance between forecast and target highlighting gap."
+            "Gainers_Decliners": "Period-over-period Waterfall showing momentum.",
+            "Waterfall": "Variance between forecast and target highlighting gap."
         }
         for name in chart_order:
             if name in imgs:
