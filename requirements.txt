@@ -1,25 +1,12 @@
-# Core
 streamlit>=1.30.0
 pandas>=2.1.0
 numpy>=1.26.0
-
-# Visualization
-matplotlib>=3.7.1
 plotly>=5.20.0
-kaleido>=0.2.1
-
-# File handling
-python-dotenv>=1.0.0
-chardet>=5.2.0
-openpyxl>=3.1.2
-xlrd>=2.0.1
-
-# PDF
-reportlab>=4.0.6
+prophet>=1.2.3
 pdfplumber>=0.8.0
 fpdf2>=2.5.5
-
-# Forecasting
-prophet>=1.2.3
-cmdstanpy>=1.2.3
-holidays>=0.24
+reportlab>=4.0.6
+openpyxl>=3.1.2
+xlrd>=2.0.1
+python-dotenv>=1.0.0
+chardet>=5.2.0
