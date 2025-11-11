@@ -7,6 +7,8 @@ import chardet
 import base64
 from io import BytesIO
 from datetime import datetime, date
+import time
+from fpdf import FPDF
 
 import warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
@@ -19,6 +21,7 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 import plotly.io as pio
 from dotenv import load_dotenv
+import tempfile
 
 # PDF generation
 from reportlab.lib.pagesizes import letter
@@ -45,13 +48,6 @@ st.set_page_config(page_title="📦 Business Insight Hub", layout="wide")
 st.title("📦 Business Insight Hub Dashboard")
 st.markdown('Upload your business data, analyze trends, and generate accurate sales forecasts for data-driven decisions.</div>', unsafe_allow_html=True)
 
-# ========= Simple UI==============
-st.markdown("""
-<style>
-.one-liner { font-size:13px; color:#555; margin-bottom:8px; }
-.small-muted { font-size:12px; color:#6c6c6c; }
-</style>
-""", unsafe_allow_html=True)
 
 
 # ---------------- Utilities ----------------
@@ -248,142 +244,101 @@ def run_prophet_forecast(df_resampled, periods, freq, seasonality_weekly=True, s
 
 
 # ---------------- UI ----------------
-tabs = st.tabs(["📂 Upload Data", "📊 Store & Department Performance Overview", "📈 Forecast", "💬 Actionable Insights", ])
+# Sidebar navigation
+tab_selection = st.sidebar.radio(
+    "Navigation",
+    ["📂", "📈", "💬"],
+    format_func=lambda x: {
+        "📂": "Upload Data & Insights",
+        "📈": "Forecast",
+        "💬": "Actionable Insights",
+    }[x],
+    key="tab_choice"
+)
+
 
 # ---------------------------------------------------
-# 📂 Tab 0: Upload Data
+# 📂 Upload Data & Insights Tab
 # ---------------------------------------------------
-with tabs[0]:
+if tab_selection == "📂":
     st.markdown("### Step 1: Upload Your Data File")
-    st.markdown('<div class="one-liner">Upload CSV file. The app will detect date & sales columns automatically.</div>', unsafe_allow_html=True)
+    st.markdown(
+        '<div class="one-liner">Upload your dataset CSV. The app will auto-detect date, store, department, and SKU columns.</div>',
+        unsafe_allow_html=True,
+    )
+
+    # File uploader
     uploaded_file = st.file_uploader("Upload dataset file")
 
+    # ✅ If user uploads a new file
     if uploaded_file:
         df = read_any_file(uploaded_file)
-        if df is not None:
+        if df is not None and not df.empty:
             df = df.round(0)
             st.session_state.df_raw = df
-            st.subheader("Complete dataset")
-            st.dataframe(df, height=600, use_container_width=True)
-            st.success("Dataset loaded successfully!")
+            st.success("✅ Dataset loaded successfully!")
 
-# ---------------------------------------------------
-# 📊 Tab 1: Actual Data Insights
-# ---------------------------------------------------
-with tabs[1]:
-    
-    import plotly.express as px
-    import pandas as pd
-    import streamlit as st
-    st.markdown("## 📊 Store & Department Performance Overview")
-    st.caption("Visualize key patterns in your uploaded dataset before forecasting.")
-
-    # 1️⃣ Check if data is uploaded
-    if "df_raw" not in st.session_state:
-        st.warning("⚠️ Please upload data first in the '📂 Upload Data' tab.")
-        st.stop()
-
-    df = st.session_state.df_raw.copy()
-
-    # 2️⃣ Try to detect essential columns dynamically
-    possible_store = [c for c in df.columns if "store" in c.lower()]
-    possible_dept = [c for c in df.columns if "dept" in c.lower() or "department" in c.lower()]
-    possible_sales = [c for c in df.columns if "sale" in c.lower() or "amount" in c.lower() or "revenue" in c.lower()]
-
-    # Validate presence
-    if not (possible_store and possible_dept and possible_sales):
-        st.error("Missing one or more required columns: Store, Department, Sales.")
-        st.stop()
-
-    store_col = possible_store[0]
-    dept_col = possible_dept[0]
-    sales_col = possible_sales[0]
-
-    # Coerce numeric sales
-    df[sales_col] = pd.to_numeric(df[sales_col], errors="coerce").fillna(0)
-
-    # ---------------------------------------------------
-    # 3️⃣ Store × Department Heatmap
-    # ---------------------------------------------------
-    st.subheader("Store × Department Heatmap")
-    pivot_df = (
-        df.groupby([store_col, dept_col], as_index=False)[sales_col]
-        .sum()
-        .pivot(index=store_col, columns=dept_col, values=sales_col)
-        .fillna(0)
-    )
-    pivot_df = pivot_df.round(0).astype(int)
-    pivot_df = pivot_df.applymap(lambda x: int(x))
-
-    if pivot_df.shape[0] > 1 and pivot_df.shape[1] > 1:
-        fig_heatmap = px.imshow(
-            pivot_df,
-            text_auto=".0f",
-            color_continuous_scale="YlOrRd",
-            labels=dict(x="Department", y="Store", color="Sales"),
-            aspect="actual",
-        )
-        fig_heatmap.update_traces(
-            hovertemplate="Store: %{y}<br>Department: %{x}<br>Sales: %{z:.0f}<extra></extra>"
-        )
-        fig_heatmap.update_layout(
-            title="Store × Department Sales Heatmap",
-            xaxis_title="Department",
-            yaxis_title="Store",
-            template="plotly_white",
-            height=450,
-        )
-        st.plotly_chart(fig_heatmap, use_container_width=True)
-
-        top_store = (
-            df.groupby([store_col, dept_col])[sales_col]
-            .sum()
-            .reset_index()
-            .sort_values(sales_col, ascending=False)
-            .iloc[0]
-        )
-        st.success(f"🏆 Top Performer: {top_store[store_col]} – {top_store[dept_col]} ({top_store[sales_col]:,.0f})")
+    # ✅ Show existing data even after switching tabs
+    if "df_raw" in st.session_state and st.session_state.df_raw is not None:
+        df = st.session_state.df_raw
+        st.subheader("📋 Complete Dataset Preview")
+        st.dataframe(df, height=600, use_container_width=True) 
     else:
-        st.info("Not enough variety in Store/Department to display a meaningful heatmap.")
+        st.warning("No dataset uploaded yet. Please upload a file to continue.")
+        
+        
 
-    st.markdown("---")
 
-    # ---------------------------------------------------
-    # 4️⃣ Top 3 Departments by Sales
-    # ---------------------------------------------------
-    st.subheader("Top 3 Departments by Sales")
 
-    dept_sales = (
-        df.groupby(dept_col, as_index=False)[sales_col]
-        .sum()
-        .sort_values(sales_col, ascending=False)
-        .head(3)
-    )
+    # =======================
+# Store & Department Insights (Merged from old tab)
+# =======================
+    st.markdown("### 📊 Store & Department Sales Overview")
+    st.caption("Visualize key sales patterns before forecasting.")
 
-    if not dept_sales.empty:
-        fig_top3 = px.bar(
-            dept_sales,
-            x=dept_col,
-            y=sales_col,
-            text=sales_col,
-            title="Top 3 Departments by Total Sales",
-            color=sales_col,
-            color_continuous_scale="YlOrRd",
-        )
-        fig_top3.update_traces(texttemplate="%{text:,.0f}", textposition="outside")
-        fig_top3.update_layout(template="plotly_white", height=400)
-        st.plotly_chart(fig_top3, use_container_width=True)
+# 🔹 Validate upload
+    if "df_raw" in st.session_state:
+        df = st.session_state.df_raw.copy()
+        possible_store = [c for c in df.columns if "store" in c.lower()]
+        possible_dept = [c for c in df.columns if "dept" in c.lower() or "department" in c.lower()]
+        possible_sales = [c for c in df.columns if "sale" in c.lower() or "amount" in c.lower() or "revenue" in c.lower()]
+
+        if possible_store and possible_dept and possible_sales:
+            store_col, dept_col, sales_col = possible_store[0], possible_dept[0], possible_sales[0]
+            df[sales_col] = pd.to_numeric(df[sales_col], errors="coerce").fillna(0).round(0)
+
+            import plotly.express as px
+            pivot_df = (
+                df.groupby([store_col, dept_col], as_index=False)[sales_col]
+                .sum()
+                .round(0)
+                .pivot(index=store_col, columns=dept_col, values=sales_col)
+                .fillna(0)
+            )
+            pivot_df = pivot_df.round(0).astype(int)
+            
+            fig_heatmap = px.imshow(
+                pivot_df, text_auto=".0f", color_continuous_scale="YlOrRd",
+                labels=dict(x="Department", y="Store", color="Sales"), aspect="auto",
+            )
+             # Round hover values (no decimals)
+            fig_heatmap.update_traces(
+                hovertemplate="Store: %{y}<br>Department: %{x}<br>Sales: %{z:.0f}<extra></extra>"
+            )
+            
+            fig_heatmap.update_layout(
+                title="Store × Department Sales Heatmap",
+                template="plotly_white", height=400,
+            )
+            st.plotly_chart(fig_heatmap, use_container_width=True)
+        else:
+            st.info("Store/Department columns not found for overview charts.")
     else:
-        st.info("No sales data found to display top departments.")
+        st.info("Upload data first in the Upload tab.")
 
 
-with tabs[2]:
-    import os
-    import pandas as pd
-    from datetime import date
-    import streamlit as st
-    import matplotlib.pyplot as plt
-    import plotly.graph_objects as go
+
+elif st.session_state.get("tab_choice") == "📈":
 
     st.markdown("### Step 2: Forecast Settings & Results")
 
@@ -397,42 +352,106 @@ with tabs[2]:
         else:
             date_col, target_col = cols_map["date"], cols_map["target"]
             store_col, dept_col = cols_map["store"], cols_map["dept"]
+            for key, default in {
+                "selected_store": "All",
+                "selected_dept": "All",
+                "selected_sku": "All",
+                "selected_freq": "Weekly"
+            }.items():
+                if key not in st.session_state:
+                    st.session_state[key] = default
 
+            # ---------------------------------------------------
+# 🔄 Synced Store & Department Filters (Forecast Tab)
+# ---------------------------------------------------
             st.markdown("**Data slice**")
+
+            # ✅ Initialize shared filter state only once
+            for key, default in {"selected_store": "All", "selected_dept": "All", "selected_sku": "All", "selected_freq": "Weekly"}.items():
+                if key not in st.session_state:
+                    st.session_state[key] = default
+
+# --- Store Filter ---
             if store_col:
-                stores = sorted(df_raw[store_col].astype(str).unique())
-                selected_store = st.selectbox("Select Store (or All)", ["All"] + stores)
+                stores = ["All"] + sorted(df_raw[store_col].astype(str).unique())
+                selected_store = st.selectbox(
+                    "Select Store (or All)",
+                    stores,
+                    index=stores.index(st.session_state.selected_store)
+                    if st.session_state.selected_store in stores else 0,
+                    key="store_filter_forecast"
+                )
+    # Save selection to session_state
+                st.session_state.selected_store = selected_store
             else:
                 selected_store = "All"
+                st.session_state.selected_store = "All"
+
+# --- Department Filter ---
             if dept_col:
-                depts = sorted(df_raw[dept_col].astype(str).unique())
-                selected_dept = st.selectbox("Select Department (or All)", ["All"] + depts)
+                depts = ["All"] + sorted(df_raw[dept_col].astype(str).unique())
+                selected_dept = st.selectbox(
+                    "Select Department (or All)",
+                    depts,
+                    index=depts.index(st.session_state.selected_dept)
+                    if st.session_state.selected_dept in depts else 0,
+                    key="dept_filter_forecast"
+                )
+    # Save selection to session_state
+                st.session_state.selected_dept = selected_dept
             else:
                 selected_dept = "All"
+                st.session_state.selected_dept = "All"
 
+
+            possible_sku = [c for c in df_raw.columns if "sku" in c.lower() or "product" in c.lower() or "item" in c.lower()]
+            if possible_sku:
+                sku_col = possible_sku[0]
+                skus = sorted(df_raw[sku_col].astype(str).unique())
+                selected_sku = st.selectbox("Select SKU (or All)", skus, index=skus.index(st.session_state.selected_sku) if st.session_state.selected_sku in skus else 0,key="sku_filter_forecast")
+                st.session_state.selected_sku = selected_sku
+            else:
+                selected_sku = "All"
+                st.session_state.selected_sku = "All"
+            
             filtered = df_raw.copy()
             if store_col and selected_store != "All":
                 filtered = filtered[filtered[store_col].astype(str) == selected_store]
             if dept_col and selected_dept != "All":
                 filtered = filtered[filtered[dept_col].astype(str) == selected_dept]
+                
+            if possible_sku and selected_sku != "All":
+                filtered = filtered[filtered[sku_col].astype(str) == selected_sku]
 
             st.subheader("Filtered Data")
             st.dataframe(filtered, height=350, use_container_width=True)
-
+# --- Frequency Filter ---
             prepared = prepare_data_for_prophet(filtered, date_col, target_col)
             if prepared.empty:
                 st.error("No usable data found.")
             else:
                 c1, c2 = st.columns(2)
-                freq = {"Daily": "D", "Weekly": "W", "Monthly": "M"}[
-                    c1.selectbox("Resample Frequency", ["Daily", "Weekly", "Monthly"], index=0)
-                ]
+                freq_choice = c1.selectbox(
+                    "Resample Frequency",
+                    ["Daily", "Weekly", "Monthly"],
+                    index=["Daily", "Weekly", "Monthly"].index(
+                        st.session_state.get("selected_freq", "Weekly")
+                    )
+                    if st.session_state.get("selected_freq", "Weekly") in ["Daily", "Weekly", "Monthly"]
+                    else 1,
+                    key="freq_filter_forecast",
+                )             
+                st.session_state.selected_freq = freq_choice
+                freq = {"Daily": "D", "Weekly": "W", "Monthly": "M"}[freq_choice]
+                
+                  # --- Forecast Horizon Slider ---   
                 periods = c2.slider("Forecast Horizon", 1, 100, 30)
+                # --- Seasonal Options ---
                 s1, s2, s3 = st.columns(3)
                 season_weekly = s1.checkbox("Weekly seasonality", True)
                 season_yearly = s2.checkbox("Yearly seasonality", True)
                 season_daily = s3.checkbox("Daily seasonality", False)
-
+                     # --- Run Prophet Forecast ---
                 with st.spinner("Running Prophet forecast..."):
                     df_resampled = resample_and_fill(prepared, freq)
                     forecast_df, model_obj = run_prophet_forecast(
@@ -499,6 +518,25 @@ with tabs[2]:
                 
                 st.subheader("⚠️ Alerts & Recommendations")
                 bullets = []
+                # Detect the selected SKU name for context
+                sku_label = ""
+                if "selected_sku" in st.session_state and st.session_state["selected_sku"] != "All":
+                    sku_label = f" for SKU '{st.session_state['selected_sku']}'"
+                elif possible_sku and selected_sku != "All":
+                    sku_label = f" for SKU '{selected_sku}'"
+                
+                # Store context for clear messaging
+                context_parts = []
+                if selected_store != "All":
+                    context_parts.append(f"Store: {selected_store}")
+                if selected_dept != "All":
+                    context_parts.append(f"Department: {selected_dept}")
+                if selected_sku != "All":
+                    context_parts.append(f"SKU: {selected_sku}")
+                    
+                context_text = " | ".join(context_parts) if context_parts else "All Data"
+                
+                
                 if growth_pct > 20:
                     bullets.append("Demand rising >20% — consider increasing stock.")
                 elif growth_pct > 5:
@@ -508,10 +546,17 @@ with tabs[2]:
                 else:
                     bullets.append("Stable demand — maintain current inventory levels.")
                 bullets.append(
-                    f"Historical average: {Historical_Average:.1f}, "
-                    f"Forecast average: {Forecast_Average:.1f} ({growth_pct:+.1f}%)."
+                    f"Historical average: {Historical_Average:.0f}, "
+                    f"Forecast average: {Forecast_Average:.0f} ({growth_pct:+.0f}%)."
+                )
+                bullets.append(
+                    f"*{context_text}*: Historical avg = {Historical_Average:.0f}, "
+                    f"Forecast avg = {Forecast_Average:.0f} ({growth_pct:+.0f}%)."
                 )
 
+                # Add summary stats (always dynamic)
+                
+                
                 for b in bullets:
                     st.info(b)
 
@@ -519,6 +564,7 @@ with tabs[2]:
                 st.session_state["df_forecast"] = tail_periods
                 st.session_state["store"] = selected_store
                 st.session_state["dept"] = selected_dept
+                st.session_state["sku"] = selected_sku
                 st.session_state["gen_date"] = str(date.today())
                 st.session_state["metrics"] = metrics
                 st.session_state["growth_pct"] = growth_pct
@@ -527,19 +573,7 @@ with tabs[2]:
 
 
 
-with tabs[3]:
-    import streamlit as st
-    import pandas as pd
-    import plotly.express as px
-    import plotly.graph_objects as go
-    import numpy as np
-    import tempfile
-    import os
-    import re
-    import time
-    from fpdf import FPDF
-    from datetime import datetime
-    import plotly.io as pio
+elif st.session_state.get("tab_choice") == "💬":
 
     # ---------------------------
     # Header
@@ -599,7 +633,25 @@ with tabs[3]:
     # ---------------------------
     # Frequency selection (keeps behavior)
     # ---------------------------
-    freq = st.selectbox("Select Frequency for Analysis", ["Daily", "Weekly", "Monthly"], index=0)
+    # freq = st.selectbox("Select Frequency for Analysis", ["Daily", "Weekly", "Monthly"], index=0)
+    selected_store = st.session_state.get("selected_store", "All")
+    selected_dept = st.session_state.get("selected_dept", "All")
+    selected_sku = st.session_state.get("selected_sku", "All")
+    freq = st.session_state.get("selected_freq", "Weekly")
+    
+    
+    st.markdown(f"""**Store:** {selected_store} | **Department:** {selected_dept} | **SKU:** {selected_sku} | **Frequency:** {freq}""")
+
+    freq_options = ["Daily", "Weekly", "Monthly"]
+    freq = st.selectbox(
+        "Select Frequency for Analysis",
+        freq_options,
+        index=freq_options.index(st.session_state.selected_freq)
+        if st.session_state.selected_freq in freq_options else 1,
+        key="freq_filter_insights"
+    )
+    st.session_state.selected_freq = freq
+    
     rolling_window = 7 if freq == "Daily" else 4 if freq == "Weekly" else 2
     st.caption(f"Rolling average window automatically set to {rolling_window} periods.")
 
